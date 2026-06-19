@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -18,9 +19,15 @@ from typing import Any, Dict, Iterable, Optional
 from urllib.parse import urlparse, urlunparse
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 STATE_DIR = ROOT / "state"
 DB_PATH = STATE_DIR / "lightpanda_threads.db"
-DASHBOARD_ACTION_STATE_DIR = Path("/root/.hermes/dashboard/state/threads-recent-topic-flow")
+DASHBOARD_ACTION_STATE_DIR = Path(
+    os.getenv(
+        "THREADS_ACTION_STATE_DIR",
+        str(REPO_ROOT / "dashboard" / "state" / "threads-recent-topic-flow"),
+    )
+)
 CONFIG_PATH = ROOT / "finder_config.json"
 SEEN_PATH = STATE_DIR / "seen-posts.json"
 HISTORY_PATH = STATE_DIR / "runs.jsonl"

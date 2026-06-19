@@ -44,6 +44,22 @@ npm run build
 
 5. Run/restore the Hermes cron using `scripts/lightpanda_threads_cron.py`.
 
+## Database setup for another PC/agent
+
+The live SQLite DB is intentionally excluded from git. A new machine/agent can recreate it from code.
+
+Read: `docs/database-setup.md`
+
+Quick bootstrap:
+
+```bash
+cd lightpanda-threads
+mkdir -p state
+python3 scripts/sqlite_store.py init
+python3 scripts/sqlite_store.py migrate
+python3 scripts/sqlite_store.py stats
+```
+
 ## Important note: Telegram “Me” button
 
 The live server also has a Hermes Telegram gateway patch so the **Me** button consumes the next Telegram topic message and runs:
