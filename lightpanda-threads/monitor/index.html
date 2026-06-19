@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lightpanda Threads Finder Monitor</title>
+  <style>
+    :root { color-scheme: dark; --bg:#050814; --panel:#0f172a; --panel2:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#7dd3fc; --ok:#86efac; --bad:#fca5a5; --warn:#fde68a; --line:rgba(148,163,184,.16); }
+    * { box-sizing: border-box; }
+    body { margin:0; font:14px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:radial-gradient(circle at top left,#15314a,#050814 45%); color:var(--text); }
+    header { padding:28px 32px 12px; }
+    h1 { margin:0; font-size:28px; letter-spacing:-.03em; }
+    h2 { margin:0 0 12px; font-size:18px; }
+    .sub { color:var(--muted); margin-top:6px; }
+    main { padding:16px 32px 40px; display:grid; gap:16px; grid-template-columns: repeat(12, 1fr); }
+    section { background:rgba(15,23,42,.88); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 16px 50px rgba(0,0,0,.22); }
+    .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; } .span-6 { grid-column: span 6; }
+    .grid { display:grid; gap:10px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid3 { display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .metric { border:1px solid var(--line); border-radius:14px; padding:12px; background:rgba(17,24,39,.72); min-height:76px; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    .value { font-size:22px; font-weight:750; margin-top:3px; word-break:break-word; }
+    .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); } .accent { color:var(--accent); }
+    code, pre { background:rgba(2,6,23,.75); border:1px solid var(--line); border-radius:10px; }
+    code { padding:2px 6px; } pre { padding:12px; overflow:auto; color:#cbd5e1; max-height:420px; }
+    table { width:100%; border-collapse: collapse; } th,td { text-align:left; padding:9px 8px; border-bottom:1px solid rgba(148,163,184,.12); vertical-align:top; } th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+    .pill { display:inline-flex; gap:6px; align-items:center; border:1px solid rgba(125,211,252,.25); color:#bae6fd; border-radius:999px; padding:4px 9px; background:rgba(14,165,233,.08); margin:0 8px 8px 0; }
+    .card { border:1px solid var(--line); background:rgba(17,24,39,.58); border-radius:14px; padding:14px; margin:10px 0; }
+    .small { color:var(--muted); font-size:12px; }
+    a { color:#7dd3fc; }
+    @media (max-width: 900px) { main { grid-template-columns:1fr; padding:16px; } .span-12,.span-8,.span-6,.span-4 { grid-column: span 1; } header { padding:24px 16px 8px; } .grid,.grid3 { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🐼 Lightpanda Threads Finder Monitor</h1>
+    <div class="sub">Standalone Python + Lightpanda runner — separate from Hermes Next dashboard, Node.js scripts, and Patchright.</div>
+  </header>
+  <main>
+    <section class="span-8">
+      <div class="pill">Live candidate notifications</div>
+      <div class="pill">Source label required</div>
+      <div class="pill">Original cookies read-only</div>
+      <h2>Latest cron/run summary</h2>
+      <div id="latest" class="grid"></div>
+    </section>
+    <section class="span-4">
+      <h2>Resource usage</h2>
+      <div id="resources" class="grid"></div>
+    </section>
+    <section class="span-12">
+      <h2>Latest candidates</h2>
+      <div id="candidates"></div>
+    </section>
+    <section class="span-6">
+      <h2>Accounts / cookie import</h2>
+      <div id="accounts"></div>
+    </section>
+    <section class="span-6">
+      <h2>Safety / capability status</h2>
+      <div id="safety"></div>
+    </section>
+    <section class="span-12">
+      <h2>Recent runs</h2>
+      <div id="runs"></div>
+    </section>
+    <section class="span-12">
+      <h2>Raw status</h2>
+      <pre id="raw">Loading…</pre>
+    </section>
+  </main>
+<script>
+const fmt = (v, suffix='') => (v === null || v === undefined || v === '' ? '—' : `${v}${suffix}`);
+const metric = (label, value, cls='') => `<div class="metric"><div class="label">${label}</div><div class="value ${cls}">${value}</div></div>`;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const allResults = (s) => Array.isArray(s?.results) ? s.results : (s ? [s] : []);
+const allCandidates = (s) => allResults(s).flatMap(r => (r.candidates || []).map(c => ({...c, accountLabel:r.accountLabel, accountId:r.accountId, runDir:r.runDir})));
+async function refresh(){
+  const statusRes = await fetch('/api/status', {cache:'no-store'});
+  const runsRes = await fetch('/api/runs', {cache:'no-store'});
+  const payload = await statusRes.json();
+  const runsPayload = await runsRes.json();
+  const s = payload.status || {};
+  const r = s.resource || {};
+  const results = allResults(s);
+  document.getElementById('latest').innerHTML = [
+    metric('Browser source', esc(s.browserSource || 'PandaBrowser/Lightpanda'), 'accent'),
+    metric('Run mode', esc(s.mode || '—')),
+    metric('Finished', esc(s.finishedAt || '—')),
+    metric('Accounts run', fmt(s.accountCount ?? results.length)),
+    metric('Candidates', fmt(s.candidateCount), Number(s.candidateCount) > 0 ? 'ok' : ''),
+    metric('Checked posts', fmt(s.checkedPostCount)),
+    metric('Run dir', `<span class="small">${esc(s.runDir || '—')}</span>`),
+    metric('Cron-safe', 'isolated', 'ok'),
+  ].join('');
+  document.getElementById('resources').innerHTML = [
+    metric('Peak PSS', fmt(r.peakPssMb, ' MB'), 'accent'),
+    metric('Peak RSS', fmt(r.peakRssMb, ' MB')),
+    metric('Peak CPU', fmt(r.peakCpuPercent, '%'), 'accent'),
+    metric('Processes', fmt(r.peakProcessCount)),
+  ].join('');
+  const candidates = allCandidates(s);
+  document.getElementById('candidates').innerHTML = candidates.length ? candidates.map(c => `<div class="card">
+    <div class="small">${esc(c.accountLabel || c.accountId)} · keyword: ${esc(c.keyword)} · score: ${esc(c.score)}</div>
+    <b>${esc(c.title || c.ogTitle || 'Threads post')}</b>
+    <p>${esc(c.text || c.description || '').slice(0, 700)}</p>
+    <div class="small">Reason: ${esc((c.reasons || []).join('; '))}</div>
+    <div><a href="${esc(c.url)}" target="_blank" rel="noreferrer">Open post</a></div>
+    <div class="small">Telegram: ${esc(c.telegram?.skipped ? c.telegram.reason : (c.telegram?.ok ? 'sent #' + c.telegram.messageId : 'not sent'))}</div>
+  </div>`).join('') : '<div class="small">No candidate in latest run.</div>';
+  const imports = (payload.importReport && payload.importReport.accounts) || [];
+  const configAccounts = (payload.config && payload.config.accounts) || [];
+  document.getElementById('accounts').innerHTML = `<table><thead><tr><th>Account</th><th>Enabled</th><th>Mode</th><th>Keywords</th><th>Cookies</th></tr></thead><tbody>${configAccounts.map(acc => {
+    const imp = imports.find(x => x.id === acc.id) || {};
+    return `<tr><td>${esc(acc.label || acc.id)}<br><small>${esc(acc.handle || '')}</small></td><td>${acc.enabled ? 'yes' : 'no'}</td><td>${esc(acc.intentMode || '')}</td><td>${acc.keywordCount}</td><td class="${imp.ok ? 'ok' : 'bad'}">${imp.ok ? esc(imp.cookieCount) : esc(imp.error || 'not imported')}</td></tr>`;
+  }).join('')}</tbody></table>`;
+  const safety = s.safety || payload.config?.safety || {};
+  document.getElementById('safety').innerHTML = [
+    metric('Dashboard mutation', safety.noDashboardMutation || safety.doNotModifyExistingDashboard ? 'blocked' : '—', 'ok'),
+    metric('Node/Patchright mutation', safety.noNodePatchrightMutation || safety.doNotModifyExistingNodePatchrightScripts ? 'blocked' : '—', 'ok'),
+    metric('Cookie source', safety.sourceStorageStateReadOnly ? 'read-only' : '—', 'ok'),
+    metric('Screenshot', safety.realScreenshotAvailable === false || safety.browserScreenshotIsNotTrusted ? 'not trusted' : 'available', safety.realScreenshotAvailable ? 'ok' : 'warn'),
+    metric('Auto-comment submit', safety.autoCommentSubmit ? 'ON' : 'OFF', safety.autoCommentSubmit ? 'warn' : 'ok'),
+    metric('Note', `<span class="small">${esc(safety.screenshotNote || 'DOM/meta/image evidence used.')}</span>`),
+  ].join('');
+  const runs = runsPayload.runs || [];
+  document.getElementById('runs').innerHTML = `<table><thead><tr><th>Time</th><th>Source</th><th>Accounts</th><th>Candidates</th><th>Checked</th><th>Peak PSS</th></tr></thead><tbody>${runs.map(x => `<tr><td>${esc(x.finishedAt || x.startedAt)}</td><td>${esc(x.browserSource)}</td><td>${esc(x.accountCount ?? '')}</td><td>${esc(x.candidateCount)}</td><td>${esc(x.checkedPostCount)}</td><td>${esc(x.resource?.peakPssMb)} MB</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('raw').textContent = JSON.stringify(payload, null, 2);
+}
+refresh().catch(err => { document.getElementById('raw').textContent = String(err); });
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+**/auth.json
+**/hosts.yml
+**/*token*
+**/*secret*
+**/secrets/**
+**/state/auth/**
+**/state/cookies/**
+**/*.cookies.json
+**/*.session.cookies.json
+
+# Runtime state / logs / databases
+**/state/**
+!**/state/.gitkeep
+**/*.log
+**/*.pid
+**/*.lock
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
+**/runs.jsonl
+**/finder-runs/**
+**/sessions/**
+**/logs/**
+
+# Build/dependencies
+**/node_modules/**
+**/.next/**
+**/dist/**
+**/build/**
+**/__pycache__/**
+**/*.pyc
+**/.pytest_cache/**
+
+# Local binaries/cache/media
+**/bin/**
+**/cache/**
+**/image_cache/**
+**/audio_cache/**
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.mp4
+*.ogg
+
+# OS/editor
+.DS_Store
+*.swp
+*.tmp
