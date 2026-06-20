@@ -598,27 +598,6 @@ export default function LightpandaThreadsPage() {
               </div>
             </Panel>
 
-            <Panel>
-              <PanelHeader kicker="04 · Comment guardrails" title="Review vs auto-comment" />
-              <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-2">
-                <SwitchTile
-                  checked={Boolean(config.autoComment?.enabled)}
-                  onChange={(value) => updateAuto({ enabled: value })}
-                  title="Default auto-comment mode"
-                  description="Fallback/default for accounts that do not override it. Per-account toggles above control each Threads login."
-                />
-                <SwitchTile
-                  checked={Boolean(config.autoComment?.submit)}
-                  onChange={(value) => updateAuto({ submit: value })}
-                  title="Default submit comment"
-                  description="Fallback/default submit switch. Per-account submit ON means Lily/auto may actually press submit for that account."
-                />
-                <div className="space-y-2 md:col-span-2">
-                  <FieldLabel>Auto-comment safety reason</FieldLabel>
-                  <TextArea rows={3} value={config.autoComment?.reason || ''} onChange={(event) => updateAuto({ reason: event.target.value })} />
-                </div>
-              </div>
-            </Panel>
           </div>
 
           <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">

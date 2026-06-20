@@ -98,8 +98,14 @@ def import_account(account: Dict[str, Any]) -> Dict[str, Any]:
         return report
 
     raw = load_json(source)
-    raw_cookies = raw.get("cookies", []) if isinstance(raw, dict) else []
-    converted = [convert_cookie(c) for c in raw_cookies if c.get("name") and c.get("domain")]
+    if isinstance(raw, dict):
+        raw_cookies = raw.get("cookies", [])
+    elif isinstance(raw, list):
+        # Browser extensions such as Cookie-Editor commonly export a raw cookie array.
+        raw_cookies = raw
+    else:
+        raw_cookies = []
+    converted = [convert_cookie(c) for c in raw_cookies if isinstance(c, dict) and c.get("name") and c.get("domain")]
     write_private_json(target, converted)
 
     stat = source.stat()
@@ -131,7 +137,9 @@ def main() -> int:
     for account in config.get("accounts", []):
         if args.account and account.get("id") != args.account:
             continue
-        if not account.get("enabled", True):
+        # If an explicit account is requested, import it even when disabled.
+        # Disabled only means cron/search is off; login/cookie setup must still work.
+        if not args.account and not account.get("enabled", True):
             continue
         reports.append(import_account(account))
 

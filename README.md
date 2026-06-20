@@ -48,7 +48,10 @@ npm run build
 
 The live SQLite DB is intentionally excluded from git. A new machine/agent can recreate it from code.
 
-Read: `docs/database-setup.md`
+Read:
+
+- `docs/database-setup.md`
+- `docs/windows-terminal-login.md` for VPS login from a Windows laptop and automatic cookie upload
 
 Quick bootstrap:
 
